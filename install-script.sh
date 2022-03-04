@@ -1,4 +1,6 @@
 echo "Hello fro installer script"
+$bootstrapToken=$1
+echo $bootstrapToken
 
 # Step2: install osconfig
 sudo sh -c "echo 'deb http://packages.cloud.google.com/apt google-osconfig-agent-stable main' >> /etc/apt/sources.list"
