@@ -1,5 +1,19 @@
-bootstraptoken=$1
-vmID=$2
+#!/bin/bash
+
+bootstraptoken=${bootstraptoken:-}
+vmID=${vmID:-}
+
+while [ $# -gt 0 ]; do
+
+   if [[ $1 == *"--"* ]]; then
+        param="${1/--/}"
+        declare $param="$2"
+        # echo $1 $2 // Optional to see the parameter:value result
+   fi
+
+  shift
+done
+
 # todo:jharshit: in next PR: how to get this fix ip?
 attachServiceEp="10.110.5.236"
 
