@@ -1,27 +1,39 @@
 #!/bin/bash
+# call to get installer command which will give command to run this script
+# curl -H "Content-Type: application/json" "http://$attachservice/installagent0/getinstallercommand/" -d '{"VmId": "vm-1111", "VmName": "vm-cr-1111", "Namespace": "default", "ServiceAccount": "attach-service-sa"}'
 
-bootstraptoken=${bootstraptoken:-}
+bootstrapToken=${bootstrapToken:-}
 vmID=${vmID:-}
 
 while [ $# -gt 0 ]; do
-
    if [[ $1 == *"--"* ]]; then
         param="${1/--/}"
         declare $param="$2"
-        # echo $1 $2 // Optional to see the parameter:value result
+#        echo $1 $2 # Optional to see the parameter:value result
    fi
-
+  shift
   shift
 done
 
 # todo:jharshit: in next PR: how to get this fix ip?
-attachServiceEp="10.110.5.236"
+attachServiceEp="10.102.217.150"
 
 echo "Calling attach service to configure workload identity"
 configureWIURL="http://""$attachServiceEp""/installagent0/configureworkloadidentityforvm/"
 echo "Hitting "$configureWIURL
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$configureWIURL" -H "Content-Type: application/json" -d '{"BootstrapToken" : "'"$bootstrapToken"'", "VmId" : "'"$vmID"'"}')
-# todo:jharshit: in next PR: get 4 things and dump into file
+
+Vm_uuid=$(sudo cat /sys/class/dmi/id/product_uuid)
+Vm_bios=$(sudo cat /sys/class/dmi/id/bios_version) # or use this: sudo dmidecode -s bios-version
+Vm_macid=sudo ifconfig ens4 # cat /sys/class/net/*/address,
+#echo $bootstrapToken
+
+configureResponse=$(curl -s -w "%{http_code}" -X POST "$configureWIURL" -H "Content-Type: application/json" -H "Authorization: Bearer $bootstrapToken" -d '{"VmId" : "'"$vmID"'", "Vm_uuid" : "'"Vm_uuid"'", "Vm_bios" : "'"Vm_bios"'", "Vm_macid" : "'"Vm_macid"'"}')
+configureResponse=(${configureResponse[@]})
+HTTP_STATUS=${configureResponse[-1]}
+configureResponseBody=${configureResponse[@]::${#configureResponse[@]}-1}
+>configureResponseBody1.txt
+echo "$configureResponseBody" >> configureResponseBody1.txt
+
 echo "configure workload identity status: "$HTTP_STATUS
 
 if [ $HTTP_STATUS != 200 ]
@@ -44,5 +56,5 @@ else
 
   echo "Updating agent status to attach-service with status "$agentStatus
   UpdateInstallStatusURL="http://""$attachServiceEp""/installagent0/updateinstallstatus/"
-  curl -X POST "$UpdateInstallStatusURL" -H "Content-Type: application/json" -d '{"AgentRunning" : '"$agentStatus"'}'
+  curl -X POST "$UpdateInstallStatusURL" -H "Content-Type: application/json" -H "Authorization: Bearer $bootstrapToken" -H "Content-Type: application/json" -d '{"AgentRunning" : '"$agentStatus"'}'
 fi
