@@ -20,21 +20,19 @@ attachServiceEp="10.102.217.150"
 
 echo "Calling attach service to configure workload identity"
 configureWIURL="http://""$attachServiceEp""/installagent0/configureworkloadidentityforvm/"
+configureWIURL="https://httpbin.org/post"
 echo "Hitting "$configureWIURL
 
 Vm_uuid=$(sudo cat /sys/class/dmi/id/product_uuid)
 Vm_bios=$(sudo cat /sys/class/dmi/id/bios_version) # or use this: sudo dmidecode -s bios-version
-Vm_macid=sudo ifconfig ens4 # cat /sys/class/net/*/address,
-#echo $bootstrapToken
+Vm_macid=$(sudo cat /sys/class/net/ens4/address) #sudo ifconfig ens4 # cat /sys/class/net/*/address,
 
-configureResponse=$(curl -s -w "%{http_code}" -X POST "$configureWIURL" -H "Content-Type: application/json" -H "Authorization: Bearer $bootstrapToken" -d '{"VmId" : "'"$vmID"'", "Vm_uuid" : "'"Vm_uuid"'", "Vm_bios" : "'"Vm_bios"'", "Vm_macid" : "'"Vm_macid"'"}')
-configureResponse=(${configureResponse[@]})
-HTTP_STATUS=${configureResponse[-1]}
-configureResponseBody=${configureResponse[@]::${#configureResponse[@]}-1}
->configureResponseBody1.txt
-echo "$configureResponseBody" >> configureResponseBody1.txt
-
-echo "configure workload identity status: "$HTTP_STATUS
+configureResponse=$(curl -s -w "%{http_code}\n" -X POST "$configureWIURL" -H "Content-Type: application/json" -H "Authorization: Bearer $bootstrapToken" -d '{"VmId" : "'"$vmID"'", "Vm_uuid" : "'"$Vm_uuid"'", "Vm_bios" : "'"$Vm_bios"'", "Vm_macid" : "'"$Vm_macid"'"}')
+HTTP_STATUS=${configureResponse: -3}
+configureResponse=${configureResponse::-3}
+>configureResponseBody.txt
+echo "$configureResponse" >> configureResponseBody.txt
+echo "Configure workload identity status: "$HTTP_STATUS
 
 if [ $HTTP_STATUS != 200 ]
 then
